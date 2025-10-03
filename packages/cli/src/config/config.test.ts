@@ -2531,10 +2531,6 @@ describe('Output format', () => {
     const config = await loadCliConfig(
       {},
       [],
-      new ExtensionEnablementManager(
-        ExtensionStorage.getUserExtensionsDir(),
-        argv.extensions,
-      ),
       'test-session',
       argv,
     );
