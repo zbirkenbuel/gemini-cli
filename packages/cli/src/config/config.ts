@@ -12,7 +12,6 @@ import { hideBin } from 'yargs/helpers';
 import process from 'node:process';
 import { mcpCommand } from '../commands/mcp.js';
 import type {
-  FileFilteringOptions,
   MCPServerConfig,
   OutputFormat,
   GeminiCLIExtension,
@@ -20,14 +19,12 @@ import type {
 import { extensionsCommand } from '../commands/extensions.js';
 import {
   Config,
-  loadServerHierarchicalMemory,
   setGeminiMdFilename as setServerGeminiMdFilename,
   getCurrentGeminiMdFilename,
   ApprovalMode,
   DEFAULT_GEMINI_MODEL,
   DEFAULT_GEMINI_MODEL_AUTO,
   DEFAULT_GEMINI_EMBEDDING_MODEL,
-  DEFAULT_MEMORY_FILE_FILTERING_OPTIONS,
   FileDiscoveryService,
   ShellTool,
   EditTool,
@@ -401,47 +398,13 @@ export async function parseArguments(settings: Settings): Promise<CliArgs> {
   return result as unknown as CliArgs;
 }
 
-// This function is now a thin wrapper around the server's implementation.
-// It's kept in the CLI for now as App.tsx directly calls it for memory refresh.
-// TODO: Consider if App.tsx should get memory via a server call or if Config should refresh itself.
-export async function loadHierarchicalGeminiMemory(
+async function checkIsCurrentWorkingDirectoryHomeDirectory(
   currentWorkingDirectory: string,
-  includeDirectoriesToReadGemini: readonly string[] = [],
-  debugMode: boolean,
-  fileService: FileDiscoveryService,
-  settings: Settings,
-  extensions: GeminiCLIExtension[],
-  folderTrust: boolean,
-  memoryImportFormat: 'flat' | 'tree' = 'tree',
-  fileFilteringOptions?: FileFilteringOptions,
-): Promise<{ memoryContent: string; fileCount: number; filePaths: string[] }> {
+): Promise<boolean> {
   // FIX: Use real, canonical paths for a reliable comparison to handle symlinks.
   const realCwd = fs.realpathSync(path.resolve(currentWorkingDirectory));
   const realHome = fs.realpathSync(path.resolve(homedir()));
-  const isHomeDirectory = realCwd === realHome;
-
-  // If it is the home directory, pass an empty string to the core memory
-  // function to signal that it should skip the workspace search.
-  const effectiveCwd = isHomeDirectory ? '' : currentWorkingDirectory;
-
-  if (debugMode) {
-    logger.debug(
-      `CLI: Delegating hierarchical memory load to server for CWD: ${currentWorkingDirectory} (memoryImportFormat: ${memoryImportFormat})`,
-    );
-  }
-
-  // Directly call the server function with the corrected path.
-  return loadServerHierarchicalMemory(
-    effectiveCwd,
-    includeDirectoriesToReadGemini,
-    debugMode,
-    fileService,
-    extensions,
-    folderTrust,
-    memoryImportFormat,
-    fileFilteringOptions,
-    settings.context?.discoveryMaxDirs,
-  );
+  return realCwd === realHome;
 }
 
 /**
@@ -512,30 +475,12 @@ export async function loadCliConfig(
 
   const fileService = new FileDiscoveryService(cwd);
 
-  const fileFiltering = {
-    ...DEFAULT_MEMORY_FILE_FILTERING_OPTIONS,
-    ...settings.context?.fileFiltering,
-  };
+  const currentWorkingDirectoryIsHomeDir =
+    await checkIsCurrentWorkingDirectoryHomeDirectory(cwd);
 
   const includeDirectories = (settings.context?.includeDirectories || [])
     .map(resolvePath)
     .concat((argv.includeDirectories || []).map(resolvePath));
-
-  // Call the (now wrapper) loadHierarchicalGeminiMemory which calls the server's version
-  const { memoryContent, fileCount, filePaths } =
-    await loadHierarchicalGeminiMemory(
-      cwd,
-      settings.context?.loadMemoryFromIncludeDirectories
-        ? includeDirectories
-        : [],
-      debugMode,
-      fileService,
-      settings,
-      allExtensions,
-      trustedFolder,
-      memoryImportFormat,
-      fileFiltering,
-    );
 
   let mcpServers = mergeMcpServers(settings, allExtensions);
   const question = argv.promptInteractive || argv.prompt || '';
@@ -700,9 +645,7 @@ export async function loadCliConfig(
     toolCallCommand: settings.tools?.callCommand,
     mcpServerCommand: settings.mcp?.serverCommand,
     mcpServers,
-    userMemory: memoryContent,
-    geminiMdFileCount: fileCount,
-    geminiMdFilePaths: filePaths,
+    // Explicitly NOT setting userMemory, geminiMdFilePaths, or geminiMdFileCount, these will be calculated in the initialize method.
     approvalMode,
     showMemoryUsage:
       argv.showMemoryUsage || settings.ui?.showMemoryUsage || false,
@@ -757,6 +700,12 @@ export async function loadCliConfig(
     codebaseInvestigatorSettings:
       settings.experimental?.codebaseInvestigatorSettings,
     retryFetchErrors: settings.general?.retryFetchErrors ?? false,
+    enableSubagents: settings.experimental?.enableSubagents ?? false,
+    loadMemoryConfig: {
+      importFormat: memoryImportFormat,
+      currentWorkingDirectoryIsHomeDir,
+      discoveryMaxDirs: settings.context?.discoveryMaxDirs,
+    },
   });
 }
 

@@ -44,7 +44,6 @@ import {
   ShellExecutionService,
 } from '@google/gemini-cli-core';
 import { validateAuthMethod } from '../config/auth.js';
-import { loadHierarchicalGeminiMemory } from '../config/config.js';
 import process from 'node:process';
 import { useHistory } from './hooks/useHistoryManager.js';
 import { useMemoryMonitor } from './hooks/useMemoryMonitor.js';
@@ -527,25 +526,8 @@ Logging in with Google... Please restart Gemini CLI to continue.
       Date.now(),
     );
     try {
-      const { memoryContent, fileCount, filePaths } =
-        await loadHierarchicalGeminiMemory(
-          process.cwd(),
-          settings.merged.context?.loadMemoryFromIncludeDirectories
-            ? config.getWorkspaceContext().getDirectories()
-            : [],
-          config.getDebugMode(),
-          config.getFileService(),
-          settings.merged,
-          config.getExtensions(),
-          config.isTrustedFolder(),
-          settings.merged.context?.importFormat || 'tree', // Use setting or default to 'tree'
-          config.getFileFilteringOptions(),
-        );
-
-      config.setUserMemory(memoryContent);
-      config.setGeminiMdFileCount(fileCount);
-      config.setGeminiMdFilePaths(filePaths);
-
+      const { memoryContent, fileCount } =
+        await config.loadServerHierarchicalMemory();
       setGeminiMdFileCount(fileCount);
 
       historyManager.addItem(
@@ -578,7 +560,7 @@ Logging in with Google... Please restart Gemini CLI to continue.
       );
       console.error('Error refreshing memory:', error);
     }
-  }, [config, historyManager, settings.merged]);
+  }, [config, historyManager]);
 
   const cancelHandlerRef = useRef<() => void>(() => {});
 

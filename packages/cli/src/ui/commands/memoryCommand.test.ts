@@ -30,16 +30,7 @@ vi.mock('@google/gemini-cli-core', async (importOriginal) => {
   };
 });
 
-vi.mock('../../config/config.js', async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import('../../config/config.js')>();
-  return {
-    ...original,
-    loadHierarchicalGeminiMemory: vi.fn(),
-  };
-});
-
-const mockLoadHierarchicalGeminiMemory = loadHierarchicalGeminiMemory as Mock;
+const mockLoadHierarchicalGeminiMemory = vi.fn();
 
 describe('memoryCommand', () => {
   let mockContext: CommandContext;
@@ -159,25 +150,16 @@ describe('memoryCommand', () => {
 
   describe('/memory refresh', () => {
     let refreshCommand: SlashCommand;
-    let mockSetUserMemory: Mock;
-    let mockSetGeminiMdFileCount: Mock;
-    let mockSetGeminiMdFilePaths: Mock;
 
     beforeEach(() => {
       refreshCommand = getSubCommand('refresh');
-      mockSetUserMemory = vi.fn();
-      mockSetGeminiMdFileCount = vi.fn();
-      mockSetGeminiMdFilePaths = vi.fn();
-
       const mockConfig = {
-        setUserMemory: mockSetUserMemory,
-        setGeminiMdFileCount: mockSetGeminiMdFileCount,
-        setGeminiMdFilePaths: mockSetGeminiMdFilePaths,
         getWorkingDir: () => '/test/dir',
         getDebugMode: () => false,
         getFileService: () => ({}) as FileDiscoveryService,
         getExtensions: () => [],
         shouldLoadMemoryFromIncludeDirectories: () => false,
+        loadServerHierarchicalMemory: mockLoadServerHierarchicalMemory,
         getWorkspaceContext: () => ({
           getDirectories: () => [],
         }),
@@ -228,18 +210,8 @@ describe('memoryCommand', () => {
       );
 
       expect(mockLoadHierarchicalGeminiMemory).toHaveBeenCalledOnce();
-      expect(mockSetUserMemory).toHaveBeenCalledWith(
-        refreshResult.memoryContent,
-      );
-      expect(mockSetGeminiMdFileCount).toHaveBeenCalledWith(
-        refreshResult.fileCount,
-      );
-      expect(mockSetGeminiMdFilePaths).toHaveBeenCalledWith(
-        refreshResult.filePaths,
-      );
-      expect(mockContext.ui.setGeminiMdFileCount).toHaveBeenCalledWith(
-        refreshResult.fileCount,
-      );
+      // config.setMemory, setGeminiMdFileCount, and setGeminiMdFilePaths are
+      // called internally in config.loadServerHierarchicalMemory
 
       expect(mockContext.ui.addItem).toHaveBeenCalledWith(
         {
@@ -259,9 +231,8 @@ describe('memoryCommand', () => {
       await refreshCommand.action(mockContext, '');
 
       expect(mockLoadHierarchicalGeminiMemory).toHaveBeenCalledOnce();
-      expect(mockSetUserMemory).toHaveBeenCalledWith('');
-      expect(mockSetGeminiMdFileCount).toHaveBeenCalledWith(0);
-      expect(mockSetGeminiMdFilePaths).toHaveBeenCalledWith([]);
+      // config.setMemory, setGeminiMdFileCount, and setGeminiMdFilePaths are
+      // called internally in config.loadServerHierarchicalMemory
 
       expect(mockContext.ui.addItem).toHaveBeenCalledWith(
         {
@@ -281,9 +252,8 @@ describe('memoryCommand', () => {
       await refreshCommand.action(mockContext, '');
 
       expect(mockLoadHierarchicalGeminiMemory).toHaveBeenCalledOnce();
-      expect(mockSetUserMemory).not.toHaveBeenCalled();
-      expect(mockSetGeminiMdFileCount).not.toHaveBeenCalled();
-      expect(mockSetGeminiMdFilePaths).not.toHaveBeenCalled();
+      // config.setMemory, setGeminiMdFileCount, and setGeminiMdFilePaths are
+      // called internally in config.loadServerHierarchicalMemory
 
       expect(mockContext.ui.addItem).toHaveBeenCalledWith(
         {

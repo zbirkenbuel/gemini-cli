@@ -63,6 +63,10 @@ import { RipgrepFallbackEvent } from '../telemetry/types.js';
 import type { FallbackModelHandler } from '../fallback/types.js';
 import { ModelRouterService } from '../routing/modelRouterService.js';
 import { OutputFormat } from '../output/types.js';
+import {
+  loadServerHierarchicalMemory,
+  type LoadServerHierarchicalMemoryResponse,
+} from '../utils/memoryDiscovery.js';
 
 // Re-export OAuth config type
 export type { MCPOAuthConfig, AnyToolInvocation };
@@ -211,6 +215,12 @@ export interface SandboxConfig {
   image: string;
 }
 
+export interface LoadServerHierarchicalMemoryConfig {
+  currentWorkingDirectoryIsHomeDir: boolean;
+  importFormat: 'flat' | 'tree';
+  discoveryMaxDirs?: number;
+}
+
 export interface ConfigParameters {
   sessionId: string;
   embeddingModel?: string;
@@ -281,6 +291,7 @@ export interface ConfigParameters {
   continueOnFailedApiCall?: boolean;
   retryFetchErrors?: boolean;
   enableShellOutputEfficiency?: boolean;
+  loadMemoryConfig?: LoadServerHierarchicalMemoryConfig;
 }
 
 export class Config {
@@ -375,6 +386,7 @@ export class Config {
   private readonly continueOnFailedApiCall: boolean;
   private readonly retryFetchErrors: boolean;
   private readonly enableShellOutputEfficiency: boolean;
+  private readonly loadMemoryConfig?: LoadServerHierarchicalMemoryConfig;
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
@@ -489,6 +501,7 @@ export class Config {
       format: params.output?.format ?? OutputFormat.TEXT,
     };
     this.retryFetchErrors = params.retryFetchErrors ?? false;
+    this.loadMemoryConfig = params.loadMemoryConfig;
 
     if (params.contextFileName) {
       setGeminiMdFilename(params.contextFileName);
@@ -514,6 +527,8 @@ export class Config {
     }
     this.initialized = true;
 
+    await this.loadServerHierarchicalMemory();
+
     // Initialize centralized FileDiscoveryService
     this.getFileService();
     if (this.getCheckpointingEnabled()) {
@@ -527,6 +542,43 @@ export class Config {
     this.toolRegistry = await this.createToolRegistry();
 
     await this.geminiClient.initialize();
+  }
+
+  async loadServerHierarchicalMemory(): Promise<LoadServerHierarchicalMemoryResponse> {
+    const loadConfig =
+      this.loadMemoryConfig ??
+      ({
+        currentWorkingDirectoryIsHomeDir: false,
+      } as LoadServerHierarchicalMemoryConfig);
+
+    const fileFiltering = {
+      ...DEFAULT_MEMORY_FILE_FILTERING_OPTIONS,
+      ...this.getFileFilteringOptions(),
+    };
+
+    // Do not initiate scan if the current working directory is the home directory
+    // but the core system should not concern itself with resolving home directories.
+    const workingDir = loadConfig.currentWorkingDirectoryIsHomeDir
+      ? ''
+      : this.cwd;
+    const response = await loadServerHierarchicalMemory(
+      workingDir,
+      this.shouldLoadMemoryFromIncludeDirectories()
+        ? this.getWorkspaceContext().getDirectories()
+        : [],
+      this.getDebugMode(),
+      this.getFileService(),
+      this.getExtensions(),
+      !!this.trustedFolder,
+      loadConfig.importFormat,
+      fileFiltering,
+      loadConfig.discoveryMaxDirs,
+    );
+    this.setUserMemory(response.memoryContent);
+    this.setGeminiMdFileCount(response.fileCount);
+    this.setGeminiMdFilePaths(response.filePaths);
+
+    return response;
   }
 
   getContentGenerator(): ContentGenerator {

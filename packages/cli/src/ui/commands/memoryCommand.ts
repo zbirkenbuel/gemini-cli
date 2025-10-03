@@ -82,24 +82,8 @@ export const memoryCommand: SlashCommand = {
           const config = await context.services.config;
           const settings = context.services.settings;
           if (config) {
-            const { memoryContent, fileCount, filePaths } =
-              await loadHierarchicalGeminiMemory(
-                config.getWorkingDir(),
-                config.shouldLoadMemoryFromIncludeDirectories()
-                  ? config.getWorkspaceContext().getDirectories()
-                  : [],
-                config.getDebugMode(),
-                config.getFileService(),
-                settings.merged,
-                config.getExtensions(),
-                config.isTrustedFolder(),
-                settings.merged.context?.importFormat || 'tree',
-                config.getFileFilteringOptions(),
-              );
-            config.setUserMemory(memoryContent);
-            config.setGeminiMdFileCount(fileCount);
-            config.setGeminiMdFilePaths(filePaths);
-            context.ui.setGeminiMdFileCount(fileCount);
+            const { memoryContent, fileCount } =
+              await config.loadHierarchicalGeminiMemory();
 
             const successMessage =
               memoryContent.length > 0

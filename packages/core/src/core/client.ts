@@ -139,6 +139,7 @@ export class GeminiClient {
   private currentSequenceModel: string | null = null;
   private lastSentIdeContext: IdeContext | undefined;
   private forceFullIdeContext = true;
+  private lastKnownChatUserMemory: string | undefined;
 
   /**
    * At any point in this conversation, was compression triggered without
@@ -260,6 +261,7 @@ My setup is complete. I will provide my first command in the next turn.
 
     try {
       const userMemory = this.config.getUserMemory();
+      this.lastKnownChatUserMemory = userMemory;
       const systemInstruction = getCoreSystemPrompt(this.config, userMemory);
       const model = this.config.getModel();
 
@@ -529,6 +531,19 @@ My setup is complete. I will provide my first command in the next turn.
     // part from the user immediately follows a functionCall part from the model
     // in the conversation history . The IDE context is not discarded; it will
     // be included in the next regular message sent to the model.
+
+    // Changes to user memory (due to memory additions or extension refresh) may
+    // have updated the userMemory value but thta doesn't automatically update
+    // the system instruction.  However calculating the system instruction
+    // requires reading the system prompts off of disk so avoid recaclulating
+    // it if the userMemory value hasn't changed.
+    const userMemory = this.config.getUserMemory();
+    if (userMemory !== this.lastKnownChatUserMemory) {
+      this.lastKnownChatUserMemory = userMemory;
+      const systemInstruction = getCoreSystemPrompt(this.config, userMemory);
+      this.getChat().setSystemInstruction(systemInstruction);
+    }
+
     const history = this.getHistory();
     const lastMessage =
       history.length > 0 ? history[history.length - 1] : undefined;
