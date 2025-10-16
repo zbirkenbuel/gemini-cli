@@ -198,6 +198,17 @@ export class GeminiClient {
     this.getChat().setTools(tools);
   }
 
+  /** Invoked after manipulating the set of active extensions */
+  async refreshConfigAfterExtensionActivationChange(): Promise<void> {
+    // load (or unload) core markdown files from extensions
+    await this.config.loadServerHierarchicalMemory();
+    await this.config.calculateMcpToolState();
+    // rediscover tools that may have been added (or dropped)
+    await this.config.getToolRegistry().discoverAllTools();
+    // also refresh tools that might now be available...
+    await this.setTools();
+  }
+
   async resetChat(): Promise<void> {
     this.chat = await this.startChat();
   }

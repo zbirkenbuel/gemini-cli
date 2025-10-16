@@ -11,11 +11,7 @@ import yargs from 'yargs/yargs';
 import { hideBin } from 'yargs/helpers';
 import process from 'node:process';
 import { mcpCommand } from '../commands/mcp.js';
-import type {
-  MCPServerConfig,
-  OutputFormat,
-  GeminiCLIExtension,
-} from '@google/gemini-cli-core';
+import type { OutputFormat, GeminiCLIExtension } from '@google/gemini-cli-core';
 import { extensionsCommand } from '../commands/extensions.js';
 import {
   Config,
@@ -482,7 +478,6 @@ export async function loadCliConfig(
     .map(resolvePath)
     .concat((argv.includeDirectories || []).map(resolvePath));
 
-  let mcpServers = mergeMcpServers(settings, allExtensions);
   const question = argv.promptInteractive || argv.prompt || '';
 
   // Determine approval mode with backward compatibility
@@ -577,40 +572,6 @@ export async function loadCliConfig(
     }
   }
 
-  const excludeTools = mergeExcludeTools(
-    settings,
-    allExtensions,
-    extraExcludes.length > 0 ? extraExcludes : undefined,
-  );
-  const blockedMcpServers: Array<{ name: string; extensionName: string }> = [];
-
-  if (!argv.allowedMcpServerNames) {
-    if (settings.mcp?.allowed) {
-      mcpServers = allowedMcpServers(
-        mcpServers,
-        settings.mcp.allowed,
-        blockedMcpServers,
-      );
-    }
-
-    if (settings.mcp?.excluded) {
-      const excludedNames = new Set(settings.mcp.excluded.filter(Boolean));
-      if (excludedNames.size > 0) {
-        mcpServers = Object.fromEntries(
-          Object.entries(mcpServers).filter(([key]) => !excludedNames.has(key)),
-        );
-      }
-    }
-  }
-
-  if (argv.allowedMcpServerNames) {
-    mcpServers = allowedMcpServers(
-      mcpServers,
-      argv.allowedMcpServerNames,
-      blockedMcpServers,
-    );
-  }
-
   const useModelRouter = settings.experimental?.useModelRouter ?? true;
   const defaultModel = useModelRouter
     ? DEFAULT_GEMINI_MODEL_AUTO
@@ -640,11 +601,24 @@ export async function loadCliConfig(
     coreTools: settings.tools?.core || undefined,
     allowedTools: allowedTools.length > 0 ? allowedTools : undefined,
     policyEngineConfig,
-    excludeTools,
     toolDiscoveryCommand: settings.tools?.discoveryCommand,
     toolCallCommand: settings.tools?.callCommand,
     mcpServerCommand: settings.mcp?.serverCommand,
-    mcpServers,
+    initialSettingsMcpServerConfig: {
+      mcpServers: settings.mcpServers,
+      allowedMcpServerNames:
+        argv.allowedMcpServerNames ?? settings.mcp?.allowed,
+      excludedMcpServerNames: !argv.allowedMcpServerNames
+        ? settings.mcp?.excluded
+        : [],
+      excludedTools: [
+        ...new Set([
+          ...(settings.tools?.exclude || []),
+          ...(extraExcludes || []),
+        ]),
+      ],
+    },
+    // Explicitly NOT setting mcpServers, excludeTools, or blockedMcpServers, these will be populated in the initialize commend.
     // Explicitly NOT setting userMemory, geminiMdFilePaths, or geminiMdFileCount, these will be calculated in the initialize method.
     approvalMode,
     showMemoryUsage:
@@ -672,7 +646,6 @@ export async function loadCliConfig(
     experimentalZedIntegration: argv.experimentalAcp || false,
     listExtensions: argv.listExtensions || false,
     extensions: allExtensions,
-    blockedMcpServers,
     noBrowser: !!process.env['NO_BROWSER'],
     summarizeToolOutput: settings.model?.summarizeToolOutput,
     ideMode,
@@ -707,77 +680,4 @@ export async function loadCliConfig(
       discoveryMaxDirs: settings.context?.discoveryMaxDirs,
     },
   });
-}
-
-function allowedMcpServers(
-  mcpServers: { [x: string]: MCPServerConfig },
-  allowMCPServers: string[],
-  blockedMcpServers: Array<{ name: string; extensionName: string }>,
-) {
-  const allowedNames = new Set(allowMCPServers.filter(Boolean));
-  if (allowedNames.size > 0) {
-    mcpServers = Object.fromEntries(
-      Object.entries(mcpServers).filter(([key, server]) => {
-        const isAllowed = allowedNames.has(key);
-        if (!isAllowed) {
-          blockedMcpServers.push({
-            name: key,
-            extensionName: server.extension?.name || '',
-          });
-        }
-        return isAllowed;
-      }),
-    );
-  } else {
-    blockedMcpServers.push(
-      ...Object.entries(mcpServers).map(([key, server]) => ({
-        name: key,
-        extensionName: server.extension?.name || '',
-      })),
-    );
-    mcpServers = {};
-  }
-  return mcpServers;
-}
-
-function mergeMcpServers(settings: Settings, extensions: GeminiCLIExtension[]) {
-  const mcpServers = { ...(settings.mcpServers || {}) };
-  for (const extension of extensions) {
-    if (!extension.isActive) {
-      continue;
-    }
-    Object.entries(extension.mcpServers || {}).forEach(([key, server]) => {
-      if (mcpServers[key]) {
-        logger.warn(
-          `Skipping extension MCP config for server with key "${key}" as it already exists.`,
-        );
-        return;
-      }
-      mcpServers[key] = {
-        ...server,
-        extension,
-      };
-    });
-  }
-  return mcpServers;
-}
-
-function mergeExcludeTools(
-  settings: Settings,
-  extensions: GeminiCLIExtension[],
-  extraExcludes?: string[] | undefined,
-): string[] {
-  const allExcludeTools = new Set([
-    ...(settings.tools?.exclude || []),
-    ...(extraExcludes || []),
-  ]);
-  for (const extension of extensions) {
-    if (!extension.isActive) {
-      continue;
-    }
-    for (const tool of extension.excludeTools || []) {
-      allExcludeTools.add(tool);
-    }
-  }
-  return [...allExcludeTools];
 }

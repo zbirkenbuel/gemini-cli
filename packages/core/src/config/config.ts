@@ -130,6 +130,13 @@ export interface CodebaseInvestigatorSettings {
   model?: string;
 }
 
+export interface InitialSettingsMcpServerConfig {
+  mcpServers?: Record<string, MCPServerConfig>;
+  allowedMcpServerNames?: string[];
+  excludedMcpServerNames?: string[];
+  excludedTools?: string[];
+}
+
 /**
  * All information required in CLI to handle an extension. Defined in Core so
  * that the collection of loaded, active, and inactive extensions can be passed
@@ -236,6 +243,7 @@ export interface ConfigParameters {
   toolCallCommand?: string;
   mcpServerCommand?: string;
   mcpServers?: Record<string, MCPServerConfig>;
+  initialSettingsMcpServerConfig?: InitialSettingsMcpServerConfig;
   userMemory?: string;
   geminiMdFileCount?: number;
   geminiMdFilePaths?: string[];
@@ -262,7 +270,6 @@ export interface ConfigParameters {
   experimentalZedIntegration?: boolean;
   listExtensions?: boolean;
   extensions?: GeminiCLIExtension[];
-  blockedMcpServers?: Array<{ name: string; extensionName: string }>;
   noBrowser?: boolean;
   summarizeToolOutput?: Record<string, SummarizeToolOutputSettings>;
   folderTrust?: boolean;
@@ -311,11 +318,14 @@ export class Config {
   private readonly fullContext: boolean;
   private readonly coreTools: string[] | undefined;
   private readonly allowedTools: string[] | undefined;
-  private readonly excludeTools: string[] | undefined;
+  private excludeTools: string[] | undefined;
   private readonly toolDiscoveryCommand: string | undefined;
   private readonly toolCallCommand: string | undefined;
   private readonly mcpServerCommand: string | undefined;
-  private readonly mcpServers: Record<string, MCPServerConfig> | undefined;
+  private mcpServers: Record<string, MCPServerConfig> | undefined;
+  private readonly _initialSettingsMcpServerConfig:
+    | InitialSettingsMcpServerConfig
+    | undefined;
   private userMemory: string;
   private geminiMdFileCount: number;
   private geminiMdFilePaths: string[];
@@ -348,10 +358,10 @@ export class Config {
   private readonly maxSessionTurns: number;
   private readonly listExtensions: boolean;
   private readonly _extensions: GeminiCLIExtension[];
-  private readonly _blockedMcpServers: Array<{
+  private _blockedMcpServers: Array<{
     name: string;
     extensionName: string;
-  }>;
+  }> = [];
   fallbackModelHandler?: FallbackModelHandler;
   private quotaErrorOccurred: boolean = false;
   private readonly summarizeToolOutput:
@@ -409,6 +419,8 @@ export class Config {
     this.toolCallCommand = params.toolCallCommand;
     this.mcpServerCommand = params.mcpServerCommand;
     this.mcpServers = params.mcpServers;
+    this._initialSettingsMcpServerConfig =
+      params.initialSettingsMcpServerConfig;
     this.userMemory = params.userMemory ?? '';
     this.geminiMdFileCount = params.geminiMdFileCount ?? 0;
     this.geminiMdFilePaths = params.geminiMdFilePaths ?? [];
@@ -448,7 +460,6 @@ export class Config {
       params.experimentalZedIntegration ?? false;
     this.listExtensions = params.listExtensions ?? false;
     this._extensions = params.extensions ?? [];
-    this._blockedMcpServers = params.blockedMcpServers ?? [];
     this.noBrowser = params.noBrowser ?? false;
     this.summarizeToolOutput = params.summarizeToolOutput;
     this.folderTrust = params.folderTrust ?? false;
@@ -542,6 +553,54 @@ export class Config {
     this.toolRegistry = await this.createToolRegistry();
 
     await this.geminiClient.initialize();
+  }
+
+  /**
+   * Given the Config objects set of active extensions and explicitly allowed or
+   * blocked tools, calculate and populate the McpServers, BlockedMcpServer and
+   * ExcludedTool properties.
+   *
+   * This does not happen automatically on extension activation state change to
+   * avoid excessive recalculation when changing extension state, though that
+   * does mean it needs to be explicitly called whenever extension activation
+   * state changes.
+   */
+  async calculateMcpToolState() {
+    let mcpServers = mergeMcpServers(
+      this._initialSettingsMcpServerConfig?.mcpServers,
+      this.getExtensions(),
+    );
+    const excludeTools = mergeExcludeTools(
+      this._initialSettingsMcpServerConfig?.excludedTools || [],
+      this.getExtensions(),
+    );
+    const blockedMcpServers: Array<{ name: string; extensionName: string }> =
+      [];
+
+    if (this._initialSettingsMcpServerConfig?.allowedMcpServerNames) {
+      mcpServers = allowedMcpServers(
+        mcpServers,
+        this._initialSettingsMcpServerConfig?.allowedMcpServerNames,
+        blockedMcpServers,
+      );
+    }
+
+    if (this._initialSettingsMcpServerConfig?.excludedMcpServerNames) {
+      const excludedNames = new Set(
+        this._initialSettingsMcpServerConfig?.excludedMcpServerNames.filter(
+          Boolean,
+        ),
+      );
+      if (excludedNames.size > 0) {
+        mcpServers = Object.fromEntries(
+          Object.entries(mcpServers).filter(([key]) => !excludedNames.has(key)),
+        );
+      }
+    }
+
+    this.mcpServers = mcpServers;
+    this._blockedMcpServers = blockedMcpServers;
+    this.excludeTools = excludeTools;
   }
 
   async loadServerHierarchicalMemory(): Promise<LoadServerHierarchicalMemoryResponse> {
@@ -1255,3 +1314,78 @@ export class Config {
 }
 // Export model constants for use in CLI
 export { DEFAULT_GEMINI_FLASH_MODEL };
+
+/**
+ * Logic (formerly in CLI) for merging settings and etension defined tools and
+ * servers. Depending on how much of this will ultimately need to apply to A2A
+ * packages this may want to be moved to a sharable file.
+ */
+
+function allowedMcpServers(
+  mcpServers: { [x: string]: MCPServerConfig },
+  allowMCPServers: string[],
+  blockedMcpServers: Array<{ name: string; extensionName: string }>,
+) {
+  const allowedNames = new Set(allowMCPServers.filter(Boolean));
+  if (allowedNames.size > 0) {
+    mcpServers = Object.fromEntries(
+      Object.entries(mcpServers).filter(([key, server]) => {
+        const isAllowed = allowedNames.has(key);
+        if (!isAllowed) {
+          blockedMcpServers.push({
+            name: key,
+            extensionName: server.extension?.name || '',
+          });
+        }
+        return isAllowed;
+      }),
+    );
+  } else {
+    blockedMcpServers.push(
+      ...Object.entries(mcpServers).map(([key, server]) => ({
+        name: key,
+        extensionName: server.extension?.name || '',
+      })),
+    );
+    mcpServers = {};
+  }
+  return mcpServers;
+}
+
+function mergeMcpServers(
+  initialMcpServers: Record<string, MCPServerConfig> | undefined,
+  extensions: GeminiCLIExtension[],
+) {
+  const mcpServers = { ...(initialMcpServers || {}) };
+  for (const extension of extensions) {
+    if (!extension.isActive) {
+      continue;
+    }
+    Object.entries(extension.mcpServers || {}).forEach(([key, server]) => {
+      if (mcpServers[key]) {
+        return;
+      }
+      mcpServers[key] = {
+        ...server,
+        extension,
+      };
+    });
+  }
+  return mcpServers;
+}
+
+function mergeExcludeTools(
+  excludedTools: string[],
+  extensions: GeminiCLIExtension[],
+): string[] {
+  const allExcludeTools = new Set([...excludedTools]);
+  for (const extension of extensions) {
+    if (!extension.isActive) {
+      continue;
+    }
+    for (const tool of extension.excludeTools || []) {
+      allExcludeTools.add(tool);
+    }
+  }
+  return [...allExcludeTools];
+}
