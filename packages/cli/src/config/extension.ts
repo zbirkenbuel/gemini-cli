@@ -110,7 +110,7 @@ export function getWorkspaceExtensions(
   if (path.resolve(workspaceDir) === path.resolve(os.homedir())) {
     return [];
   }
-  return loadExtensionsFromDir(workspaceDir);
+  return loadExtensionsFromDir(workspaceDir, workspaceDir);
 }
 
 export async function copyExtension(
@@ -188,7 +188,7 @@ export function loadExtensions(
 }
 
 export function loadUserExtensions(): GeminiCLIExtension[] {
-  const userExtensions = loadExtensionsFromDir(os.homedir());
+  const userExtensions = loadExtensionsFromDir(os.homedir(), process.cwd());
 
   const uniqueExtensions = new Map<string, GeminiCLIExtension>();
   for (const extension of userExtensions) {
@@ -200,18 +200,31 @@ export function loadUserExtensions(): GeminiCLIExtension[] {
   return Array.from(uniqueExtensions.values());
 }
 
-export function loadExtensionsFromDir(dir: string): GeminiCLIExtension[] {
-  const storage = new Storage(dir);
+export function loadExtensionsFromDir(
+  // The directory under which we will look for installed extensions
+  rootInstallDir: string,
+  // The current workspace directory, extensions may be enabled/disabled for the
+  // current workspace.
+  workspaceDir: string,
+): GeminiCLIExtension[] {
+  const storage = new Storage(rootInstallDir);
   const extensionsDir = storage.getExtensionsDir();
   if (!fs.existsSync(extensionsDir)) {
     return [];
   }
 
+  const extensionEnablementManager = new ExtensionEnablementManager(
+    rootInstallDir,
+  );
   const extensions: GeminiCLIExtension[] = [];
   for (const subdir of fs.readdirSync(extensionsDir)) {
     const extensionDir = path.join(extensionsDir, subdir);
 
-    const extension = loadExtension({ extensionDir, workspaceDir: dir });
+    const extension = loadExtension({
+      extensionDir,
+      workspaceDir,
+      extensionEnablementManager,
+    });
     if (extension != null) {
       extensions.push(extension);
     }
@@ -222,7 +235,7 @@ export function loadExtensionsFromDir(dir: string): GeminiCLIExtension[] {
 export function loadExtension(
   context: LoadExtensionContext,
 ): GeminiCLIExtension | null {
-  const { extensionDir, workspaceDir } = context;
+  const { extensionDir, workspaceDir, extensionEnablementManager } = context;
   if (!fs.statSync(extensionDir).isDirectory()) {
     return null;
   }
@@ -238,6 +251,7 @@ export function loadExtension(
     let config = loadExtensionConfig({
       extensionDir: effectiveExtensionPath,
       workspaceDir,
+      extensionEnablementManager,
     });
 
     config = resolveEnvVarsInObject(config);
@@ -265,7 +279,7 @@ export function loadExtension(
       installMetadata,
       mcpServers: config.mcpServers,
       excludeTools: config.excludeTools,
-      isActive: true, // Barring any other signals extensions should be considered Active.
+      isActive: extensionEnablementManager.isEnabled(config.name, workspaceDir), // Barring any other signals extensions should be considered Active.
     };
   } catch (e) {
     console.error(
@@ -285,13 +299,20 @@ export function loadExtensionByName(
   if (!fs.existsSync(userExtensionsDir)) {
     return null;
   }
+  const extensionEnablementManager = new ExtensionEnablementManager(
+    userExtensionsDir,
+  );
 
   for (const subdir of fs.readdirSync(userExtensionsDir)) {
     const extensionDir = path.join(userExtensionsDir, subdir);
     if (!fs.statSync(extensionDir).isDirectory()) {
       continue;
     }
-    const extension = loadExtension({ extensionDir, workspaceDir });
+    const extension = loadExtension({
+      extensionDir,
+      workspaceDir,
+      extensionEnablementManager,
+    });
     if (extension && extension.name.toLowerCase() === name.toLowerCase()) {
       return extension;
     }
@@ -424,6 +445,9 @@ export async function installOrUpdateExtension(
   const telemetryConfig = getTelemetryConfig(cwd);
   let newExtensionConfig: ExtensionConfig | null = null;
   let localSourcePath: string | undefined;
+  const extensionEnablementManager = new ExtensionEnablementManager(
+    ExtensionStorage.getUserExtensionsDir(),
+  );
 
   try {
     const settings = loadSettings(cwd).merged;
@@ -485,6 +509,7 @@ export async function installOrUpdateExtension(
       newExtensionConfig = loadExtensionConfig({
         extensionDir: localSourcePath,
         workspaceDir: cwd,
+        extensionEnablementManager,
       });
 
       const newExtensionName = newExtensionConfig.name;
@@ -569,6 +594,7 @@ export async function installOrUpdateExtension(
         newExtensionConfig = loadExtensionConfig({
           extensionDir: localSourcePath,
           workspaceDir: cwd,
+          extensionEnablementManager,
         });
       } catch {
         // Ignore error, this is just for logging.

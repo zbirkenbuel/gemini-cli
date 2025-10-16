@@ -117,7 +117,7 @@ export async function listMcpServers(): Promise<void> {
 
     let serverInfo =
       serverName +
-      (server.extensionName ? ` (from ${server.extensionName})` : '') +
+      (server.extension?.name ? ` (from ${server.extension.name})` : '') +
       ': ';
     if (server.httpUrl) {
       serverInfo += `${server.httpUrl} (http)`;
