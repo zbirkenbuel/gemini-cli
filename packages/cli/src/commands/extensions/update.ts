@@ -51,7 +51,10 @@ export async function handleUpdate(args: UpdateArgs) {
         );
         return;
       }
-      const updateState = await checkForExtensionUpdate(extension);
+      const updateState = await checkForExtensionUpdate(
+        extension,
+        extensionEnablementManager,
+      );
       if (updateState !== ExtensionUpdateState.UPDATE_AVAILABLE) {
         console.log(`Extension "${args.name}" is already up to date.`);
         return;
@@ -59,6 +62,7 @@ export async function handleUpdate(args: UpdateArgs) {
       // TODO(chrstnb): we should list extensions if the requested extension is not installed.
       const updatedExtensionInfo = (await updateExtension(
         extension,
+        extensionEnablementManager,
         workingDir,
         requestConsentNonInteractive,
         updateState,
@@ -83,6 +87,7 @@ export async function handleUpdate(args: UpdateArgs) {
       const extensionState = new Map();
       await checkForAllExtensionUpdates(
         extensions,
+        extensionEnablementManager,
         (action) => {
           if (action.type === 'SET_STATE') {
             extensionState.set(action.payload.name, {
@@ -97,6 +102,7 @@ export async function handleUpdate(args: UpdateArgs) {
         requestConsentNonInteractive,
         extensions,
         extensionState,
+        extensionEnablementManager,
         () => {},
       );
       updateInfos = updateInfos.filter(

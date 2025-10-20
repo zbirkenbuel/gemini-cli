@@ -127,13 +127,15 @@ describe('update tests', () => {
         );
       });
       mockGit.getRemotes.mockResolvedValue([{ name: 'origin' }]);
+      const extensionEnablementManager = new ExtensionEnablementManager();
       const extension = loadExtension({
         extensionDir: targetExtDir,
         workspaceDir: tempWorkspaceDir,
-        extensionEnablementManager: new ExtensionEnablementManager(),
+        extensionEnablementManager,
       })!;
       const updateInfo = await updateExtension(
         extension,
+        extensionEnablementManager,
         tempHomeDir,
         async (_) => true,
         ExtensionUpdateState.UPDATE_AVAILABLE,
@@ -179,13 +181,15 @@ describe('update tests', () => {
       mockGit.getRemotes.mockResolvedValue([{ name: 'origin' }]);
 
       const dispatch = vi.fn();
+      const extensionEnablementManager = new ExtensionEnablementManager();
       const extension = loadExtension({
         extensionDir,
         workspaceDir: tempWorkspaceDir,
-        extensionEnablementManager: new ExtensionEnablementManager(),
+        extensionEnablementManager,
       })!;
       await updateExtension(
         extension,
+        extensionEnablementManager,
         tempHomeDir,
         async (_) => true,
         ExtensionUpdateState.UPDATE_AVAILABLE,
@@ -224,14 +228,16 @@ describe('update tests', () => {
       mockGit.getRemotes.mockResolvedValue([{ name: 'origin' }]);
 
       const dispatch = vi.fn();
+      const extensionEnablementManager = new ExtensionEnablementManager();
       const extension = loadExtension({
         extensionDir,
         workspaceDir: tempWorkspaceDir,
-        extensionEnablementManager: new ExtensionEnablementManager(),
+        extensionEnablementManager,
       })!;
       await expect(
         updateExtension(
           extension,
+          extensionEnablementManager,
           tempHomeDir,
           async (_) => true,
           ExtensionUpdateState.UPDATE_AVAILABLE,
@@ -267,10 +273,11 @@ describe('update tests', () => {
           type: 'git',
         },
       });
+      const extensionEnablementManager = new ExtensionEnablementManager();
       const extension = loadExtension({
         extensionDir,
         workspaceDir: tempWorkspaceDir,
-        extensionEnablementManager: new ExtensionEnablementManager(),
+        extensionEnablementManager,
       })!;
 
       mockGit.getRemotes.mockResolvedValue([
@@ -282,6 +289,7 @@ describe('update tests', () => {
       const dispatch = vi.fn();
       await checkForAllExtensionUpdates(
         [extension],
+        extensionEnablementManager,
         dispatch,
         tempWorkspaceDir,
       );
@@ -304,10 +312,11 @@ describe('update tests', () => {
           type: 'git',
         },
       });
+      const extensionEnablementManager = new ExtensionEnablementManager();
       const extension = loadExtension({
         extensionDir,
         workspaceDir: tempWorkspaceDir,
-        extensionEnablementManager: new ExtensionEnablementManager(),
+        extensionEnablementManager,
       })!;
 
       mockGit.getRemotes.mockResolvedValue([
@@ -319,6 +328,7 @@ describe('update tests', () => {
       const dispatch = vi.fn();
       await checkForAllExtensionUpdates(
         [extension],
+        extensionEnablementManager,
         dispatch,
         tempWorkspaceDir,
       );
@@ -345,14 +355,16 @@ describe('update tests', () => {
         version: '1.0.0',
         installMetadata: { source: sourceExtensionDir, type: 'local' },
       });
+      const extensionEnablementManager = new ExtensionEnablementManager();
       const extension = loadExtension({
         extensionDir: installedExtensionDir,
         workspaceDir: tempWorkspaceDir,
-        extensionEnablementManager: new ExtensionEnablementManager(),
+        extensionEnablementManager,
       })!;
       const dispatch = vi.fn();
       await checkForAllExtensionUpdates(
         [extension],
+        extensionEnablementManager,
         dispatch,
         tempWorkspaceDir,
       );
@@ -379,14 +391,16 @@ describe('update tests', () => {
         version: '1.0.0',
         installMetadata: { source: sourceExtensionDir, type: 'local' },
       });
+      const extensionEnablementManager = new ExtensionEnablementManager();
       const extension = loadExtension({
         extensionDir: installedExtensionDir,
         workspaceDir: tempWorkspaceDir,
-        extensionEnablementManager: new ExtensionEnablementManager(),
+        extensionEnablementManager,
       })!;
       const dispatch = vi.fn();
       await checkForAllExtensionUpdates(
         [extension],
+        extensionEnablementManager,
         dispatch,
         tempWorkspaceDir,
       );
@@ -409,10 +423,11 @@ describe('update tests', () => {
           type: 'git',
         },
       });
+      const extensionEnablementManager = new ExtensionEnablementManager();
       const extension = loadExtension({
         extensionDir,
         workspaceDir: tempWorkspaceDir,
-        extensionEnablementManager: new ExtensionEnablementManager(),
+        extensionEnablementManager,
       })!;
 
       mockGit.getRemotes.mockRejectedValue(new Error('Git error'));
@@ -420,6 +435,7 @@ describe('update tests', () => {
       const dispatch = vi.fn();
       await checkForAllExtensionUpdates(
         [extension],
+        extensionEnablementManager,
         dispatch,
         tempWorkspaceDir,
       );

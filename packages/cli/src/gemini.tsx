@@ -276,7 +276,7 @@ export async function main() {
       ? getNodeMemoryArgs(isDebugMode)
       : [];
     const sandboxConfig = await loadSandboxConfig(settings.merged, argv);
-    // We intentially omit the list of extensions here because extensions
+    // We intentionally omit the list of extensions here because extensions
     // should not impact auth or setting up the sandbox.
     // TODO(jacobr): refactor loadCliConfig so there is a minimal version
     // that only initializes enough config to enable refreshAuth or find

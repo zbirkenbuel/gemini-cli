@@ -613,6 +613,7 @@ export async function loadCliConfig(
     maxSessionTurns: settings.model?.maxSessionTurns ?? -1,
     experimentalZedIntegration: argv.experimentalAcp || false,
     listExtensions: argv.listExtensions || false,
+    enabledExtensions: argv.extensions,
     extensions: allExtensions,
     blockedMcpServers,
     noBrowser: !!process.env['NO_BROWSER'],

@@ -253,6 +253,7 @@ export interface ConfigParameters {
   experimentalZedIntegration?: boolean;
   listExtensions?: boolean;
   extensions?: GeminiCLIExtension[];
+  enabledExtensions?: string[];
   blockedMcpServers?: Array<{ name: string; extensionName: string }>;
   noBrowser?: boolean;
   summarizeToolOutput?: Record<string, SummarizeToolOutputSettings>;
@@ -339,6 +340,7 @@ export class Config {
   private readonly maxSessionTurns: number;
   private readonly listExtensions: boolean;
   private readonly _extensions: GeminiCLIExtension[];
+  private readonly _enabledExtensions: string[];
   private readonly _blockedMcpServers: Array<{
     name: string;
     extensionName: string;
@@ -439,6 +441,7 @@ export class Config {
       params.experimentalZedIntegration ?? false;
     this.listExtensions = params.listExtensions ?? false;
     this._extensions = params.extensions ?? [];
+    this._enabledExtensions = params.enabledExtensions ?? [];
     this._blockedMcpServers = params.blockedMcpServers ?? [];
     this.noBrowser = params.noBrowser ?? false;
     this.summarizeToolOutput = params.summarizeToolOutput;
@@ -539,7 +542,7 @@ export class Config {
 
   async refreshAuth(authMethod: AuthType) {
     // Vertex and Genai have incompatible encryption and sending history with
-    // throughtSignature from Genai to Vertex will fail, we need to strip them
+    // thoughtSignature from Genai to Vertex will fail, we need to strip them
     if (
       this.contentGeneratorConfig?.authType === AuthType.USE_GEMINI &&
       authMethod === AuthType.LOGIN_WITH_GOOGLE
@@ -880,6 +883,12 @@ export class Config {
 
   getExtensions(): GeminiCLIExtension[] {
     return this._extensions;
+  }
+
+  // The list of explicitly enabled extensions, if any were given, may contain
+  // the string "none".
+  getEnabledExtensions(): string[] {
+    return this._enabledExtensions;
   }
 
   getBlockedMcpServers(): Array<{ name: string; extensionName: string }> {

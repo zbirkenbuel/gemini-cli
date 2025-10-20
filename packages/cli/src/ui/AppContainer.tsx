@@ -90,6 +90,7 @@ import { useSessionStats } from './contexts/SessionContext.js';
 import { useGitBranchName } from './hooks/useGitBranchName.js';
 import { useExtensionUpdates } from './hooks/useExtensionUpdates.js';
 import { ShellFocusContext } from './contexts/ShellFocusContext.js';
+import { ExtensionEnablementManager } from '../config/extensions/extensionEnablement.js';
 
 const CTRL_EXIT_PROMPT_DURATION_MS = 1000;
 const QUEUE_ERROR_DISPLAY_DURATION_MS = 3000;
@@ -167,6 +168,7 @@ export const AppContainer = (props: AppContainerProps) => {
     addConfirmUpdateExtensionRequest,
   } = useExtensionUpdates(
     extensions,
+    new ExtensionEnablementManager(config.getEnabledExtensions()),
     historyManager.addItem,
     config.getWorkingDir(),
   );

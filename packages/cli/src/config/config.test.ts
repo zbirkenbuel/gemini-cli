@@ -1330,7 +1330,7 @@ describe('loadCliConfig model selection', () => {
     expect(config.getModel()).toBe('auto');
   });
 
-  it('always prefers model from argvs', async () => {
+  it('always prefers model from argv', async () => {
     process.argv = ['node', 'script.js', '--model', 'gemini-8675309-ultra'];
     const argv = await parseArguments({} as Settings);
     const config = await loadCliConfig(
@@ -1347,7 +1347,7 @@ describe('loadCliConfig model selection', () => {
     expect(config.getModel()).toBe('gemini-8675309-ultra');
   });
 
-  it('selects the model from argvs if provided', async () => {
+  it('selects the model from argv if provided', async () => {
     process.argv = ['node', 'script.js', '--model', 'gemini-8675309-ultra'];
     const argv = await parseArguments({} as Settings);
     const config = await loadCliConfig(
@@ -1640,12 +1640,12 @@ describe('loadCliConfig useRipgrep', () => {
   });
 
   describe('loadCliConfig useModelRouter', () => {
-    it('should be false by default when useModelRouter is not set in settings', async () => {
+    it('should be true by default when useModelRouter is not set in settings', async () => {
       process.argv = ['node', 'script.js'];
       const argv = await parseArguments({} as Settings);
       const settings: Settings = {};
       const config = await loadCliConfig(settings, [], 'test-session', argv);
-      expect(config.getUseModelRouter()).toBe(false);
+      expect(config.getUseModelRouter()).toBe(true);
     });
 
     it('should be true when useModelRouter is set to true in settings', async () => {
@@ -1662,32 +1662,6 @@ describe('loadCliConfig useRipgrep', () => {
       const settings: Settings = { experimental: { useModelRouter: false } };
       const config = await loadCliConfig(settings, [], 'test-session', argv);
       expect(config.getUseModelRouter()).toBe(false);
-    });
-  });
-
-  describe('loadCliConfig enableSubagents', () => {
-    it('should be false by default when enableSubagents is not set in settings', async () => {
-      process.argv = ['node', 'script.js'];
-      const argv = await parseArguments({} as Settings);
-      const settings: Settings = {};
-      const config = await loadCliConfig(settings, [], 'test-session', argv);
-      expect(config.getEnableSubagents()).toBe(false);
-    });
-
-    it('should be true when enableSubagents is set to true in settings', async () => {
-      process.argv = ['node', 'script.js'];
-      const argv = await parseArguments({} as Settings);
-      const settings: Settings = { experimental: { enableSubagents: true } };
-      const config = await loadCliConfig(settings, [], 'test-session', argv);
-      expect(config.getEnableSubagents()).toBe(true);
-    });
-
-    it('should be false when enableSubagents is explicitly set to false in settings', async () => {
-      process.argv = ['node', 'script.js'];
-      const argv = await parseArguments({} as Settings);
-      const settings: Settings = { experimental: { enableSubagents: false } };
-      const config = await loadCliConfig(settings, [], 'test-session', argv);
-      expect(config.getEnableSubagents()).toBe(false);
     });
   });
 });

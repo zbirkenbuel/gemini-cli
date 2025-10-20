@@ -73,7 +73,7 @@ describe('useExtensionUpdates', () => {
     const cwd = '/test/cwd';
 
     vi.mocked(checkForAllExtensionUpdates).mockImplementation(
-      async (_extensions, dispatch, _cwd) => {
+      async (_extensions, _extensionEnablementManager, dispatch, _cwd) => {
         dispatch({
           type: 'SET_STATE',
           payload: {
@@ -85,7 +85,12 @@ describe('useExtensionUpdates', () => {
     );
 
     renderHook(() =>
-      useExtensionUpdates(extensions as GeminiCLIExtension[], addItem, cwd),
+      useExtensionUpdates(
+        extensions as GeminiCLIExtension[],
+        new ExtensionEnablementManager(),
+        addItem,
+        cwd,
+      ),
     );
 
     await waitFor(() => {
@@ -110,16 +115,17 @@ describe('useExtensionUpdates', () => {
         autoUpdate: true,
       },
     });
+    const extensionEnablementManager = new ExtensionEnablementManager();
     const extension = loadExtension({
       extensionDir,
       workspaceDir: tempHomeDir,
-      extensionEnablementManager: new ExtensionEnablementManager(),
+      extensionEnablementManager,
     })!;
 
     const addItem = vi.fn();
 
     vi.mocked(checkForAllExtensionUpdates).mockImplementation(
-      async (_extensions, dispatch, _cwd) => {
+      async (_extensions, _extensionEnablementManager, dispatch, _cwd) => {
         dispatch({
           type: 'SET_STATE',
           payload: {
@@ -136,7 +142,14 @@ describe('useExtensionUpdates', () => {
       name: '',
     });
 
-    renderHook(() => useExtensionUpdates([extension], addItem, tempHomeDir));
+    renderHook(() =>
+      useExtensionUpdates(
+        [extension],
+        extensionEnablementManager,
+        addItem,
+        tempHomeDir,
+      ),
+    );
 
     await waitFor(
       () => {
@@ -191,7 +204,7 @@ describe('useExtensionUpdates', () => {
     const addItem = vi.fn();
 
     vi.mocked(checkForAllExtensionUpdates).mockImplementation(
-      async (_extensions, dispatch, _cwd) => {
+      async (_extensions, _extensionEnablementManager, dispatch, _cwd) => {
         dispatch({
           type: 'SET_STATE',
           payload: {
@@ -221,7 +234,14 @@ describe('useExtensionUpdates', () => {
         name: '',
       });
 
-    renderHook(() => useExtensionUpdates(extensions, addItem, tempHomeDir));
+    renderHook(() =>
+      useExtensionUpdates(
+        extensions,
+        extensionEnablementManager,
+        addItem,
+        tempHomeDir,
+      ),
+    );
 
     await waitFor(
       () => {
@@ -278,7 +298,7 @@ describe('useExtensionUpdates', () => {
     const cwd = '/test/cwd';
 
     vi.mocked(checkForAllExtensionUpdates).mockImplementation(
-      async (_extensions, dispatch, _cwd) => {
+      async (_extensions, _extensionEnablementManager, dispatch, _cwd) => {
         dispatch({ type: 'BATCH_CHECK_START' });
         dispatch({
           type: 'SET_STATE',
@@ -299,8 +319,14 @@ describe('useExtensionUpdates', () => {
       },
     );
 
+    const extensionEnablementManager = new ExtensionEnablementManager();
     renderHook(() =>
-      useExtensionUpdates(extensions as GeminiCLIExtension[], addItem, cwd),
+      useExtensionUpdates(
+        extensions as GeminiCLIExtension[],
+        extensionEnablementManager,
+        addItem,
+        cwd,
+      ),
     );
 
     await waitFor(() => {
