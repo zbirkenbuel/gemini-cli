@@ -19,6 +19,7 @@ import {
   updateExtension,
 } from '../../config/extensions/update.js';
 import { ExtensionUpdateState } from '../state/extensions.js';
+import { ExtensionEnablementManager } from '../../config/extensions/extensionEnablement.js';
 
 vi.mock('os', async (importOriginal) => {
   const mockedOs = await importOriginal<typeof os>();
@@ -112,6 +113,7 @@ describe('useExtensionUpdates', () => {
     const extension = loadExtension({
       extensionDir,
       workspaceDir: tempHomeDir,
+      extensionEnablementManager: new ExtensionEnablementManager(),
     })!;
 
     const addItem = vi.fn();
@@ -172,14 +174,17 @@ describe('useExtensionUpdates', () => {
       },
     });
 
+    const extensionEnablementManager = new ExtensionEnablementManager();
     const extensions = [
       loadExtension({
         extensionDir: extensionDir1,
         workspaceDir: tempHomeDir,
+        extensionEnablementManager,
       })!,
       loadExtension({
         extensionDir: extensionDir2,
         workspaceDir: tempHomeDir,
+        extensionEnablementManager,
       })!,
     ];
 

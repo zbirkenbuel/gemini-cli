@@ -18,6 +18,7 @@ import { GEMINI_DIR } from '@google/gemini-cli-core';
 import { isWorkspaceTrusted } from '../trustedFolders.js';
 import { ExtensionUpdateState } from '../../ui/state/extensions.js';
 import { createExtension } from '../../test-utils/createExtension.js';
+import { ExtensionEnablementManager } from './extensionEnablement.js';
 
 const mockGit = {
   clone: vi.fn(),
@@ -129,6 +130,7 @@ describe('update tests', () => {
       const extension = loadExtension({
         extensionDir: targetExtDir,
         workspaceDir: tempWorkspaceDir,
+        extensionEnablementManager: new ExtensionEnablementManager(),
       })!;
       const updateInfo = await updateExtension(
         extension,
@@ -180,6 +182,7 @@ describe('update tests', () => {
       const extension = loadExtension({
         extensionDir,
         workspaceDir: tempWorkspaceDir,
+        extensionEnablementManager: new ExtensionEnablementManager(),
       })!;
       await updateExtension(
         extension,
@@ -224,6 +227,7 @@ describe('update tests', () => {
       const extension = loadExtension({
         extensionDir,
         workspaceDir: tempWorkspaceDir,
+        extensionEnablementManager: new ExtensionEnablementManager(),
       })!;
       await expect(
         updateExtension(
@@ -266,6 +270,7 @@ describe('update tests', () => {
       const extension = loadExtension({
         extensionDir,
         workspaceDir: tempWorkspaceDir,
+        extensionEnablementManager: new ExtensionEnablementManager(),
       })!;
 
       mockGit.getRemotes.mockResolvedValue([
@@ -302,6 +307,7 @@ describe('update tests', () => {
       const extension = loadExtension({
         extensionDir,
         workspaceDir: tempWorkspaceDir,
+        extensionEnablementManager: new ExtensionEnablementManager(),
       })!;
 
       mockGit.getRemotes.mockResolvedValue([
@@ -342,6 +348,7 @@ describe('update tests', () => {
       const extension = loadExtension({
         extensionDir: installedExtensionDir,
         workspaceDir: tempWorkspaceDir,
+        extensionEnablementManager: new ExtensionEnablementManager(),
       })!;
       const dispatch = vi.fn();
       await checkForAllExtensionUpdates(
@@ -375,6 +382,7 @@ describe('update tests', () => {
       const extension = loadExtension({
         extensionDir: installedExtensionDir,
         workspaceDir: tempWorkspaceDir,
+        extensionEnablementManager: new ExtensionEnablementManager(),
       })!;
       const dispatch = vi.fn();
       await checkForAllExtensionUpdates(
@@ -404,6 +412,7 @@ describe('update tests', () => {
       const extension = loadExtension({
         extensionDir,
         workspaceDir: tempWorkspaceDir,
+        extensionEnablementManager: new ExtensionEnablementManager(),
       })!;
 
       mockGit.getRemotes.mockRejectedValue(new Error('Git error'));

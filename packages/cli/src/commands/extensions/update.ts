@@ -7,7 +7,6 @@
 import type { CommandModule } from 'yargs';
 import {
   loadExtensions,
-  ExtensionStorage,
   requestConsentNonInteractive,
 } from '../../config/extension.js';
 import {
@@ -32,7 +31,6 @@ const updateOutput = (info: ExtensionUpdateInfo) =>
 export async function handleUpdate(args: UpdateArgs) {
   const workingDir = process.cwd();
   const extensionEnablementManager = new ExtensionEnablementManager(
-    ExtensionStorage.getUserExtensionsDir(),
     // Force enable named extensions, otherwise we will only update the enabled
     // ones.
     args.name ? [args.name] : [],
