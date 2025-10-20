@@ -215,6 +215,7 @@ export const useExtensionUpdates = (
     }
   }, [
     extensions,
+    extensionEnablementManager,
     extensionsUpdateState,
     addConfirmUpdateExtensionRequest,
     addItem,

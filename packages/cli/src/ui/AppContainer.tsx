@@ -160,6 +160,9 @@ export const AppContainer = (props: AppContainerProps) => {
   );
 
   const extensions = config.getExtensions();
+  const [extensionEnablementManager] = useState<ExtensionEnablementManager>(
+    new ExtensionEnablementManager(config.getEnabledExtensions()),
+  );
   const {
     extensionsUpdateState,
     extensionsUpdateStateInternal,
@@ -168,7 +171,7 @@ export const AppContainer = (props: AppContainerProps) => {
     addConfirmUpdateExtensionRequest,
   } = useExtensionUpdates(
     extensions,
-    new ExtensionEnablementManager(config.getEnabledExtensions()),
+    extensionEnablementManager,
     historyManager.addItem,
     config.getWorkingDir(),
   );
