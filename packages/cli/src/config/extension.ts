@@ -243,13 +243,13 @@ export function loadExtension(
 
 export function loadExtensionByName(
   name: string,
+  extensionEnablementManager: ExtensionEnablementManager,
   workspaceDir: string = process.cwd(),
 ): GeminiCLIExtension | null {
   const userExtensionsDir = ExtensionStorage.getUserExtensionsDir();
   if (!fs.existsSync(userExtensionsDir)) {
     return null;
   }
-  const extensionEnablementManager = new ExtensionEnablementManager();
 
   for (const subdir of fs.readdirSync(userExtensionsDir)) {
     const extensionDir = path.join(userExtensionsDir, subdir);
@@ -541,7 +541,11 @@ export async function installOrUpdateExtension(
           'success',
         ),
       );
-      enableExtension(newExtensionConfig.name, SettingScope.User);
+      enableExtension(
+        newExtensionConfig.name,
+        SettingScope.User,
+        extensionEnablementManager,
+      );
     }
 
     return newExtensionConfig!.name;
@@ -778,13 +782,14 @@ export function toOutputString(
 export function disableExtension(
   name: string,
   scope: SettingScope,
+  extensionEnablementManager: ExtensionEnablementManager,
   cwd: string = process.cwd(),
 ) {
   const config = getTelemetryConfig(cwd);
   if (scope === SettingScope.System || scope === SettingScope.SystemDefaults) {
     throw new Error('System and SystemDefaults scopes are not supported.');
   }
-  const extension = loadExtensionByName(name, cwd);
+  const extension = loadExtensionByName(name, extensionEnablementManager, cwd);
   if (!extension) {
     throw new Error(`Extension with name ${name} does not exist.`);
   }
@@ -798,18 +803,18 @@ export function disableExtension(
 export function enableExtension(
   name: string,
   scope: SettingScope,
+  extensionEnablementManager: ExtensionEnablementManager,
   cwd: string = process.cwd(),
 ) {
   if (scope === SettingScope.System || scope === SettingScope.SystemDefaults) {
     throw new Error('System and SystemDefaults scopes are not supported.');
   }
-  const extension = loadExtensionByName(name, cwd);
+  const extension = loadExtensionByName(name, extensionEnablementManager, cwd);
   if (!extension) {
     throw new Error(`Extension with name ${name} does not exist.`);
   }
-  const manager = new ExtensionEnablementManager();
   const scopePath = scope === SettingScope.Workspace ? cwd : os.homedir();
-  manager.enable(name, true, scopePath);
+  extensionEnablementManager.enable(name, true, scopePath);
   const config = getTelemetryConfig(cwd);
   logExtensionEnable(config, new ExtensionEnableEvent(name, scope));
 }

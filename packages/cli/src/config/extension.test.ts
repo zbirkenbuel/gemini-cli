@@ -212,12 +212,13 @@ describe('extension tests', () => {
         name: 'enabled-extension',
         version: '2.0.0',
       });
+      const manager = new ExtensionEnablementManager();
       disableExtension(
         'disabled-extension',
         SettingScope.User,
+        manager,
         tempWorkspaceDir,
       );
-      const manager = new ExtensionEnablementManager();
       const extensions = loadExtensions(manager);
       expect(extensions).toHaveLength(2);
       expect(extensions[0].name).toBe('disabled-extension');
@@ -1342,7 +1343,11 @@ This extension will run the following MCP servers:
         version: '1.0.0',
       });
 
-      disableExtension('my-extension', SettingScope.User);
+      disableExtension(
+        'my-extension',
+        SettingScope.User,
+        new ExtensionEnablementManager(),
+      );
       expect(
         isEnabled({
           name: 'my-extension',
@@ -1361,6 +1366,7 @@ This extension will run the following MCP servers:
       disableExtension(
         'my-extension',
         SettingScope.Workspace,
+        new ExtensionEnablementManager(),
         tempWorkspaceDir,
       );
       expect(
@@ -1384,8 +1390,16 @@ This extension will run the following MCP servers:
         version: '1.0.0',
       });
 
-      disableExtension('my-extension', SettingScope.User);
-      disableExtension('my-extension', SettingScope.User);
+      disableExtension(
+        'my-extension',
+        SettingScope.User,
+        new ExtensionEnablementManager(),
+      );
+      disableExtension(
+        'my-extension',
+        SettingScope.User,
+        new ExtensionEnablementManager(),
+      );
       expect(
         isEnabled({
           name: 'my-extension',
@@ -1396,7 +1410,11 @@ This extension will run the following MCP servers:
 
     it('should throw an error if you request system scope', () => {
       expect(() =>
-        disableExtension('my-extension', SettingScope.System),
+        disableExtension(
+          'my-extension',
+          SettingScope.System,
+          new ExtensionEnablementManager(),
+        ),
       ).toThrow('System and SystemDefaults scopes are not supported.');
     });
 
@@ -1407,7 +1425,11 @@ This extension will run the following MCP servers:
         version: '1.0.0',
       });
 
-      disableExtension('ext1', SettingScope.Workspace);
+      disableExtension(
+        'ext1',
+        SettingScope.Workspace,
+        new ExtensionEnablementManager(),
+      );
 
       expect(mockLogExtensionDisable).toHaveBeenCalled();
       expect(ExtensionDisableEvent).toHaveBeenCalledWith(
@@ -1434,11 +1456,12 @@ This extension will run the following MCP servers:
         name: 'ext1',
         version: '1.0.0',
       });
-      disableExtension('ext1', SettingScope.User);
+      const extensionEnablementManager = new ExtensionEnablementManager();
+      disableExtension('ext1', SettingScope.User, extensionEnablementManager);
       let activeExtensions = getActiveExtensions();
       expect(activeExtensions).toHaveLength(0);
 
-      enableExtension('ext1', SettingScope.User);
+      enableExtension('ext1', SettingScope.User, extensionEnablementManager);
       activeExtensions = getActiveExtensions();
       expect(activeExtensions).toHaveLength(1);
       expect(activeExtensions[0].name).toBe('ext1');
@@ -1450,11 +1473,20 @@ This extension will run the following MCP servers:
         name: 'ext1',
         version: '1.0.0',
       });
-      disableExtension('ext1', SettingScope.Workspace);
+      const extensionEnablementManager = new ExtensionEnablementManager();
+      disableExtension(
+        'ext1',
+        SettingScope.Workspace,
+        extensionEnablementManager,
+      );
       let activeExtensions = getActiveExtensions();
       expect(activeExtensions).toHaveLength(0);
 
-      enableExtension('ext1', SettingScope.Workspace);
+      enableExtension(
+        'ext1',
+        SettingScope.Workspace,
+        extensionEnablementManager,
+      );
       activeExtensions = getActiveExtensions();
       expect(activeExtensions).toHaveLength(1);
       expect(activeExtensions[0].name).toBe('ext1');
@@ -1466,8 +1498,17 @@ This extension will run the following MCP servers:
         name: 'ext1',
         version: '1.0.0',
       });
-      disableExtension('ext1', SettingScope.Workspace);
-      enableExtension('ext1', SettingScope.Workspace);
+      const extensionEnablementManager = new ExtensionEnablementManager();
+      disableExtension(
+        'ext1',
+        SettingScope.Workspace,
+        extensionEnablementManager,
+      );
+      enableExtension(
+        'ext1',
+        SettingScope.Workspace,
+        extensionEnablementManager,
+      );
 
       expect(mockLogExtensionEnable).toHaveBeenCalled();
       expect(ExtensionEnableEvent).toHaveBeenCalledWith(
