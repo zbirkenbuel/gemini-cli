@@ -794,9 +794,8 @@ export function disableExtension(
     throw new Error(`Extension with name ${name} does not exist.`);
   }
 
-  const manager = new ExtensionEnablementManager([name]);
   const scopePath = scope === SettingScope.Workspace ? cwd : os.homedir();
-  manager.disable(name, true, scopePath);
+  extensionEnablementManager.disable(name, true, scopePath);
   logExtensionDisable(config, new ExtensionDisableEvent(name, scope));
 }
 
