@@ -23,6 +23,7 @@ import {
   logExtensionUninstall,
   logExtensionUpdateEvent,
   logExtensionDisable,
+  debugLogger,
 } from '@google/gemini-cli-core';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -232,7 +233,7 @@ export function loadExtension(
       id,
     };
   } catch (e) {
-    console.error(
+    debugLogger.error(
       `Warning: Skipping extension in ${effectiveExtensionPath}: ${getErrorMessage(
         e,
       )}`,
@@ -309,7 +310,7 @@ function getContextFileNames(config: ExtensionConfig): string[] {
 export async function requestConsentNonInteractive(
   consentDescription: string,
 ): Promise<boolean> {
-  console.info(consentDescription);
+  debugLogger.log(consentDescription);
   const result = await promptForConsentNonInteractive(
     'Do you want to continue? [Y/n]: ',
   );

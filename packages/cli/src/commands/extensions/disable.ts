@@ -9,6 +9,7 @@ import { disableExtension } from '../../config/extension.js';
 import { SettingScope } from '../../config/settings.js';
 import { getErrorMessage } from '../../utils/errors.js';
 import { ExtensionEnablementManager } from '../../config/extensions/extensionEnablement.js';
+import { debugLogger } from '@google/gemini-cli-core';
 
 interface DisableArgs {
   name: string;
@@ -31,11 +32,11 @@ export function handleDisable(args: DisableArgs) {
         extensionEnablementManager,
       );
     }
-    console.log(
+    debugLogger.log(
       `Extension "${args.name}" successfully disabled for scope "${args.scope}".`,
     );
   } catch (error) {
-    console.error(getErrorMessage(error));
+    debugLogger.error(getErrorMessage(error));
     process.exit(1);
   }
 }
